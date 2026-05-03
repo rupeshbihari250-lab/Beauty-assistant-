@@ -1,0 +1,10 @@
+{
+  "name": "Beauty AI Assistant",
+  "description": "A real-time, witty, and sassy voice-to-voice AI assistant with a distinct personality.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "GEMINI_LIVE_API"
+  ]
+}
