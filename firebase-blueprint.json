@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "UserPreference": {
+      "title": "User Preference",
+      "description": "Stores user-specific settings and personality flags.",
+      "type": "object",
+      "properties": {
+        "nickname": { "type": "string" },
+        "theme": { "type": "string" },
+        "language": { "type": "string" },
+        "lastActive": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Memory": {
+      "title": "Memory",
+      "description": "A specific fact or piece of information Beauty should remember about the user.",
+      "type": "object",
+      "properties": {
+        "fact": { "type": "string" },
+        "category": { "type": "string" },
+        "importance": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fact", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A message in a conversation history.",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["role", "content", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/preferences": {
+      "schema": "UserPreference",
+      "description": "Single document for user settings."
+    },
+    "/users/{userId}/memories": {
+      "schema": "Memory",
+      "description": "Collection of facts Beauty remembers."
+    },
+    "/users/{userId}/messages": {
+      "schema": "ChatMessage",
+      "description": "Rolling history of messages."
+    }
+  }
+}

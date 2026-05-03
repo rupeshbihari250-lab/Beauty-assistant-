@@ -4,21 +4,67 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Power, Globe, Heart, Zap } from "lucide-react";
+import { Mic, MicOff, Power, Globe, Heart, Zap, LogIn, LogOut, User } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { LiveAPIClient, SessionStatus } from "./lib/live-api-client";
 import { AudioPlayer, AudioStreamer } from "./lib/audio-streamer";
 import AudioVisualizer from "./components/AudioVisualizer";
+import { auth } from "./lib/firebase";
+import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { MemoryService } from "./services/memoryService";
 
 export default function App() {
   const [status, setStatus] = useState<SessionStatus>("disconnected");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastTranscript, setLastTranscript] = useState("");
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [memories, setMemories] = useState<string>("");
   
   const clientRef = useRef<LiveAPIClient | null>(null);
   const streamerRef = useRef<AudioStreamer | null>(null);
   const playerRef = useRef<AudioPlayer | null>(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (u) {
+        loadMemories();
+      } else {
+        setMemories("");
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const loadMemories = async () => {
+    try {
+      const allMemories = await MemoryService.getAllMemories();
+      if (allMemories.length > 0) {
+        const memText = allMemories.map(m => `- ${m.fact}`).join("\n");
+        setMemories(memText);
+      }
+    } catch (err) {
+      console.error("Failed to load memories:", err);
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      setError(null);
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      console.error(err);
+      setError("Login failed. Please try again.");
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    if (status === "connected") {
+      toggleSession();
+    }
+  };
 
   // Tools
   const tools = {
@@ -26,6 +72,11 @@ export default function App() {
       window.open(url, "_blank");
       return { success: true, opened: url };
     },
+    saveMemory: async (fact: string) => {
+      await MemoryService.addMemory(fact);
+      loadMemories(); // Refresh local list
+      return { success: true, saved: fact };
+    }
   };
 
   const handleMessage = useCallback(async (msg: any) => {
@@ -62,9 +113,12 @@ export default function App() {
       if (name === "openWebsite") {
         const result = tools.openWebsite(args.url);
         clientRef.current?.sendToolResponse(id, result);
+      } else if (name === "saveMemory") {
+        const result = await tools.saveMemory(args.fact);
+        clientRef.current?.sendToolResponse(id, result);
       }
     }
-  }, []);
+  }, [user, memories]);
 
   const handleStatusChange = (newStatus: SessionStatus) => {
     setStatus(newStatus);
@@ -72,6 +126,11 @@ export default function App() {
 
   const toggleSession = async () => {
     setError(null);
+    if (!user && status === "disconnected") {
+      setError("Please sign in first to chat with Beauty.");
+      return;
+    }
+
     if (status === "disconnected") {
       try {
         if (!clientRef.current) {
@@ -86,7 +145,7 @@ export default function App() {
           });
         }
 
-        await clientRef.current.connect();
+        await clientRef.current.connect(memories);
         await streamerRef.current.start();
       } catch (err: any) {
         console.error(err);
@@ -131,17 +190,42 @@ export default function App() {
       <motion.div 
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="absolute top-12 flex flex-col items-center gap-2"
+        className="absolute top-8 left-0 right-0 flex justify-between items-start px-8"
       >
-        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10 backdrop-blur-md">
-          <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-pink-500 animate-pulse' : 'bg-gray-500'}`} />
-          <span className="text-xs font-medium uppercase tracking-[0.2em] text-pink-100/60">
-            {getStatusText()}
-          </span>
+        <div className="flex flex-col items-start gap-2">
+          <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10 backdrop-blur-md">
+            <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-pink-500 animate-pulse' : 'bg-gray-500'}`} />
+            <span className="text-xs font-medium uppercase tracking-[0.2em] text-pink-100/60">
+              {getStatusText()}
+            </span>
+          </div>
+          <h1 className="text-4xl font-light tracking-tighter text-pink-50">
+            BEAUTY <span className="font-bold text-pink-500">AI</span>
+          </h1>
         </div>
-        <h1 className="text-4xl font-light tracking-tighter text-pink-50">
-          BEAUTY <span className="font-bold text-pink-500">AI</span>
-        </h1>
+
+        <div className="flex items-center gap-4">
+          {user ? (
+            <div className="flex items-center gap-3 bg-white/5 pl-2 pr-4 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
+              <img src={user.photoURL || ""} alt={user.displayName || ""} className="w-8 h-8 rounded-full border border-pink-500/30" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-pink-200/60 font-medium uppercase tracking-wider">Creator Mode</span>
+                <span className="text-xs font-semibold text-white/80">{user.displayName?.split(' ')[0]}</span>
+              </div>
+              <button onClick={handleLogout} className="ml-2 p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-red-400">
+                <LogOut size={16} />
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={handleLogin}
+              className="flex items-center gap-2 px-5 py-2.5 bg-pink-500 hover:bg-pink-600 rounded-2xl transition-all shadow-lg shadow-pink-500/20 font-semibold text-sm"
+            >
+              <LogIn size={18} />
+              Sign In
+            </button>
+          )}
+        </div>
       </motion.div>
 
       {/* Main Interaction Area */}

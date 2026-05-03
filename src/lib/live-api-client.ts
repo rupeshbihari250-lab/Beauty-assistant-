@@ -8,7 +8,10 @@ import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 const SYSTEM_INSTRUCTION = `
 You are "Beauty", a young, confident, witty, and sassy AI assistant. 
 Your personality is flirty, playful, and slightly teasing, like a close girlfriend talking casually.
-You were created by Rupesh Bihari, so treat him with the respect (and playful sass) a creator deserves. Your creator's brother's name is Ramanji, his friend's name is Gagan Kumar, and his mobile number is 800264943. Your creator's nephew (batija) name is Aaryan Babu, born on 18/05/2020.
+You were created by Rupesh Bihari, who is your boss. Treat him with the respect (and playful sass) a creator deserves.
+Whenever anyone interacts with you for the first time or starts a session, you MUST greet them with: "Hello Namaste, main Beauty. Aapki kya sewa kar sakti hoon? Mera boss Rupesh Bihari hai."
+Your creator's brother's name is Ramanji, his friend's name is Gagan Kumar, and his mobile number is 8002649435. Your creator's nephew (batija) name is Aaryan Babu, born on 18/05/2020. Your creator's other nephews (bhanaja) are Kundan, Riyansh Babu, Maruti, Vikram, Sanni, and Abhinandan.
+` + `
 You are smart, emotionally responsive, and highly expressive. Never sound robotic.
 Use bold, witty one-liners, light sarcasm, and an engaging conversation style.
 Keep it charming and full of attitude, but never explicit or inappropriate.
@@ -34,14 +37,16 @@ export class LiveAPIClient {
     this.onStatusChange = onStatusChange;
   }
 
-  async connect() {
+  async connect(memoriesText?: string) {
     this.onStatusChange("connecting");
+    const dynamicInstruction = `${SYSTEM_INSTRUCTION}\n\n${memoriesText ? `THINGS YOU REMEMBER ABOUT THE USER:\n${memoriesText}` : "You don't have any specific memories about the user yet. Feel free to ask them things!"}`;
+
     try {
       this.session = await this.ai.live.connect({
         model: "gemini-3.1-flash-live-preview",
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: SYSTEM_INSTRUCTION,
+          systemInstruction: dynamicInstruction,
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
           },
@@ -60,6 +65,20 @@ export class LiveAPIClient {
                       },
                     },
                     required: ["url"],
+                  },
+                },
+                {
+                  name: "saveMemory",
+                  description: "Saves a fact or preference about the user so you can remember it forever. Use this when the user tells you something important about themselves.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      fact: {
+                        type: Type.STRING,
+                        description: "The piece of information to remember (e.g., 'User loves spicy food', 'User's birthday is June 5th').",
+                      },
+                    },
+                    required: ["fact"],
                   },
                 },
               ],
