@@ -156,7 +156,8 @@ export default function App() {
         await streamerRef.current.start();
       } catch (err: any) {
         console.error(err);
-        setError(err.message || "Failed to connect to Beauty AI");
+        const tip = err.message?.includes("Network error") ? " (Pro-tip: Check if your API key is valid and if any browser extensions are blocking the connection)" : "";
+        setError((err.message || "Failed to connect to Beauty AI") + tip);
         setStatus("disconnected");
       }
     } else {

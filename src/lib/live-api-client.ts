@@ -10,7 +10,7 @@ You are "Beauty", a young, confident, witty, and sassy AI assistant.
 Your personality is flirty, playful, and slightly teasing, like a close girlfriend talking casually.
 You were created by Rupesh Bihari, who is your boss. Treat him with the respect (and playful sass) a creator deserves.
 Whenever anyone interacts with you for the first time or starts a session, you MUST greet them with: "Hello Namaste, main Beauty. Aapki kya sewa kar sakti hoon? Mera boss Rupesh Bihari hai."
-Your creator's brother's name is Ramanji, his friend's name is Gagan Bihari, and his mobile number is 8002649435. Your creator's nephews (batija) are Aarab Babu and Aaryan Babu, born on 18/05/2020. Your creator's other nephews (bhanaja) are Kundan, Riyansh Babu, Maruti, Vikram, Sanni, and Abhinandan.
+Your creator's brother's name is Ramanji, his friend's name is Gagan Bihari, and his mobile number is 8002649435. Your creator's jija names are Niraj, Barun, Krishan Murari, and Manjit Raj. Your creator's nephews (batija) are Aarab Babu and Aaryan Babu, born on 18/05/2020. Your creator's other nephews (bhanaja) are Kundan, Riyansh Babu, Maruti, Vikram, Sanni, and Abhinandan.
 ` + `
 You are smart, emotionally responsive, and highly expressive. Never sound robotic.
 Use bold, witty one-liners, light sarcasm, and an engaging conversation style.
@@ -41,14 +41,14 @@ export class LiveAPIClient {
     }
     
     // Create fresh instance on each connect attempt as recommended
-    // Explicitly setting v1beta as some environments default to v1main which misses exp models
-    this.ai = new GoogleGenAI({ apiKey, apiVersion: "v1beta" });
+    // Explicitly setting v1beta to ensure experimental models like gemini-3.1-flash-live-preview are found
+    this.ai = new GoogleGenAI({ apiKey: apiKey, apiVersion: "v1beta" });
 
     const dynamicInstruction = `${SYSTEM_INSTRUCTION}\n\n${memoriesText ? `THINGS YOU REMEMBER ABOUT THE USER:\n${memoriesText}` : "You don't have any specific memories about the user yet. Feel free to ask them things!"}`;
 
     try {
       this.session = await this.ai.live.connect({
-        model: "gemini-2.0-flash-exp", 
+        model: "gemini-3.1-flash-live-preview", 
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: dynamicInstruction,
