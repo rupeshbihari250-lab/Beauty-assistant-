@@ -52,10 +52,21 @@ export default function App() {
     try {
       setError(null);
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      // Using signInWithPopup as it's more reliable in iframes if popups are enabled
+      const result = await signInWithPopup(auth, provider);
+      console.log("Logged in as:", result.user.displayName);
     } catch (err: any) {
-      console.error(err);
-      setError("Login failed. Please try again.");
+      console.error("Login Error:", err);
+      const domain = window.location.hostname;
+      if (err.code === "auth/popup-blocked") {
+        setError("Popup blocked! Please allow popups for this site in your browser settings and try again.");
+      } else if (err.code === "auth/unauthorized-domain") {
+        setError(`Domain not authorized. Please go to your Firebase Console > Authentication > Settings > Authorized Domains and add: ${domain}`);
+      } else if (err.code === "auth/network-request-failed") {
+        setError("Network error. Please check your internet connection or any browser extensions (like ad-blockers) that might be blocking Firebase.");
+      } else {
+        setError(`Login problem: ${err.message || "Unknown error"}. Try opening the app in a new tab using the button in the top right, or check Authorized Domains in Firebase Console.`);
+      }
     }
   };
 
@@ -126,10 +137,6 @@ export default function App() {
 
   const toggleSession = async () => {
     setError(null);
-    if (!user && status === "disconnected") {
-      setError("Please sign in first to chat with Beauty.");
-      return;
-    }
 
     if (status === "disconnected") {
       try {
@@ -205,26 +212,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-4">
-          {user ? (
-            <div className="flex items-center gap-3 bg-white/5 pl-2 pr-4 py-2 rounded-2xl border border-white/10 backdrop-blur-md">
-              <img src={user.photoURL || ""} alt={user.displayName || ""} className="w-8 h-8 rounded-full border border-pink-500/30" />
-              <div className="flex flex-col">
-                <span className="text-[10px] text-pink-200/60 font-medium uppercase tracking-wider">Creator Mode</span>
-                <span className="text-xs font-semibold text-white/80">{user.displayName?.split(' ')[0]}</span>
-              </div>
-              <button onClick={handleLogout} className="ml-2 p-2 hover:bg-white/10 rounded-xl transition-colors text-white/40 hover:text-red-400">
-                <LogOut size={16} />
-              </button>
-            </div>
-          ) : (
-            <button 
-              onClick={handleLogin}
-              className="flex items-center gap-2 px-5 py-2.5 bg-pink-500 hover:bg-pink-600 rounded-2xl transition-all shadow-lg shadow-pink-500/20 font-semibold text-sm"
-            >
-              <LogIn size={18} />
-              Sign In
-            </button>
-          )}
+          {/* Sign in removed as per user request */}
         </div>
       </motion.div>
 
